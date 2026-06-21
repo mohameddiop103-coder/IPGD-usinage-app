@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>IPGD — Pilotage durable de l'usinage (prototype)</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F6E56">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="IPGD">
+<link rel="apple-touch-icon" href="icon-apple-touch.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1E2326; --ink-soft:#5B6266; --paper:#F6F5F1; --surface:#FFFFFF;
+    --line:#DEDBD3; --teal:#0F6E56; --teal-soft:#E1F5EE;
+    --ok:#3B6D11; --ok-soft:#EAF3DE; --warn:#854F0B; --warn-soft:#FAEEDA;
+    --danger:#791F1F; --danger-soft:#FCEBEB;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;line-height:1.5;}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 24px 64px;}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--teal);margin:0 0 8px;}
+  h1{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:28px;line-height:1.15;margin:0 0 8px;}
+  .subtitle{color:var(--ink-soft);font-size:15px;max-width:620px;margin:0;}
+  .byline{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-soft);
+    margin:16px 0 0;padding-top:12px;border-top:1px solid var(--line);}
+  nav.tabs{display:flex;gap:4px;margin:28px 0 20px;border-bottom:1px solid var(--line);}
+  nav.tabs button{font-family:"Space Grotesk",sans-serif;font-size:14px;font-weight:500;
+    background:none;border:none;padding:10px 16px;cursor:pointer;color:var(--ink-soft);
+    border-bottom:2px solid transparent;}
+  nav.tabs button.active{color:var(--teal);border-bottom-color:var(--teal);}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:22px;}
+  .card h2{font-family:"Space Grotesk",sans-serif;font-weight:500;font-size:15px;margin:0 0 18px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:680px){ .grid2{grid-template-columns:1fr;} }
+  @media (max-width:480px){
+    .subindex-grid{grid-template-columns:1fr;}
+    .weight-row{flex-wrap:wrap;}
+    .weight-row label{width:auto;flex:1 1 100%;}
+    .weight-row input[type=range]{flex:1 1 auto;width:auto;}
+    .light-panel{gap:16px;padding:16px;}
+    .light-score{font-size:32px;}
+  }
+  .field{margin-bottom:18px;}
+  .field-label{display:flex;justify-content:space-between;font-size:13px;color:var(--ink-soft);margin-bottom:6px;}
+  .field-label span.val{font-family:"IBM Plex Mono",monospace;color:var(--ink);font-weight:500;}
+  input[type=range]{width:100%;accent-color:var(--teal);height:4px;}
+  .toggle-row{display:flex;align-items:center;gap:10px;}
+  input[type=checkbox]{width:16px;height:16px;accent-color:var(--teal);}
+  .subindex-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;}
+  .subindex{background:var(--paper);border-radius:5px;padding:12px;}
+  .subindex-label{font-size:11px;color:var(--ink-soft);margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;}
+  .subindex-value{font-family:"IBM Plex Mono",monospace;font-size:18px;font-weight:500;margin:0 0 6px;}
+  .bar-track{height:5px;background:var(--line);border-radius:3px;overflow:hidden;}
+  .bar-fill{height:100%;width:0%;background:var(--teal);transition:width .25s ease;}
+  .light-panel{display:flex;align-items:center;gap:28px;margin-top:18px;border:1px solid var(--line);
+    border-radius:8px;padding:20px 24px;background:var(--surface);}
+  .light-stack{display:flex;flex-direction:column;gap:8px;}
+  .light{width:28px;height:28px;border-radius:50%;background:var(--line);opacity:.35;}
+  .light.on-red{background:var(--danger);opacity:1;}
+  .light.on-amber{background:var(--warn);opacity:1;}
+  .light.on-green{background:var(--ok);opacity:1;}
+  .light-info{flex:1;}
+  .light-score{font-family:"IBM Plex Mono",monospace;font-size:40px;font-weight:500;line-height:1;margin:0;}
+  .light-label{font-family:"Space Grotesk",sans-serif;font-size:16px;font-weight:500;margin:6px 0 4px;}
+  .light-sub{font-size:13px;color:var(--ink-soft);margin:0;}
+  .safety-list{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
+  .safety-item{display:flex;align-items:flex-start;gap:10px;}
+  .safety-dot{width:10px;height:10px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+  .safety-dot.ok{background:var(--ok);}
+  .safety-dot.warn{background:var(--warn);}
+  .safety-dot.danger{background:var(--danger);}
+  .safety-text{font-size:13.5px;color:var(--ink);line-height:1.5;}
+  .weight-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .weight-row label{width:170px;font-size:13px;color:var(--ink-soft);flex-shrink:0;}
+  .weight-row .val{font-family:"IBM Plex Mono",monospace;font-size:13px;width:46px;text-align:right;}
+  .opt-card{margin-top:20px;}
+  .opt-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+  button{font-family:inherit;font-size:14px;font-weight:500;background:var(--ink);color:#fff;
+    border:none;border-radius:5px;padding:9px 16px;cursor:pointer;}
+  button:disabled{opacity:.5;cursor:default;}
+  button:hover:not(:disabled){background:var(--teal);}
+  button.ghost{background:none;color:var(--ink);border:1px solid var(--line);}
+  button.ghost:hover{background:var(--paper);}
+  .opt-note{font-size:13px;color:var(--ink-soft);}
+  .log{font-family:"IBM Plex Mono",monospace;font-size:12.5px;background:var(--paper);
+    border-radius:5px;padding:14px;min-height:60px;max-height:160px;overflow-y:auto;}
+  .log div{padding:2px 0;}
+  .actions-row{display:flex;gap:10px;margin:18px 0 0;flex-wrap:wrap;}
+  footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-soft);}
+  table.hist{width:100%;border-collapse:collapse;font-size:13px;}
+  table.hist th, table.hist td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:center;}
+  table.hist th{font-family:"Space Grotesk",sans-serif;font-weight:500;color:var(--ink-soft);font-size:12px;}
+  table.hist td button{font-size:11px;padding:4px 8px;}
+  .tag{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;}
+  .tag-ok{background:var(--ok-soft);color:#27500A;}
+  .tag-warn{background:var(--warn-soft);color:#633806;}
+  .tag-danger{background:var(--danger-soft);color:#501313;}
+  .bars-row{display:flex;align-items:flex-end;gap:6px;height:90px;margin-bottom:16px;overflow-x:auto;
+    border-bottom:1px solid var(--line);padding-bottom:2px;}
+  .bars-row .bar{width:18px;border-radius:3px 3px 0 0;cursor:pointer;flex-shrink:0;min-height:3px;}
+  .reco{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line);}
+  .reco:last-child{border-bottom:none;}
+  .reco-tag{flex-shrink:0;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;
+    text-transform:uppercase;letter-spacing:.03em;min-width:92px;text-align:center;}
+  .reco-tag.t-danger{background:var(--danger-soft);color:#501313;}
+  .reco-tag.t-warn{background:var(--warn-soft);color:#633806;}
+  .reco-tag.t-ok{background:var(--ok-soft);color:#27500A;}
+  .reco-text{font-size:14px;color:var(--ink);padding-top:1px;}
+  #print-report{display:none;}
+  @media print{
+    nav.tabs, .actions-row, #tab-dashboard, #tab-historique, #tab-rapport, .eyebrow, .byline{display:none !important;}
+    #print-report{display:block !important;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Prototype de recherche — projet de thèse</p>
+  <h1>IPGD — Indicateur de Performance Globale Durable</h1>
+  <p class="subtitle">Pilotage de l'usinage assisté par l'intelligence artificielle, restitué sous forme de management visuel pour les acteurs de terrain.</p>
+  <p class="byline">Mohamed Diop — Génie industriel · Candidature doctorale</p>
+
+  <nav class="tabs">
+    <button id="navbtn-dashboard" class="active" onclick="showTab('dashboard')">Tableau de bord</button>
+    <button id="navbtn-historique" onclick="showTab('historique')">Historique</button>
+    <button id="navbtn-rapport" onclick="showTab('rapport')">Rapport</button>
+  </nav>
+
+  <section id="tab-dashboard">
+    <div class="grid2">
+      <div class="card">
+        <h2>Paramètres du procédé</h2>
+        <div class="field">
+          <div class="field-label"><span>Vitesse de coupe</span><span class="val" id="vc-out">180 m/min</span></div>
+          <input type="range" id="vc" min="80" max="300" step="10" value="180">
+        </div>
+        <div class="field">
+          <div class="field-label"><span>Avance</span><span class="val" id="f-out">0.25 mm/tr</span></div>
+          <input type="range" id="f" min="0.1" max="0.5" step="0.01" value="0.25">
+        </div>
+        <div class="field">
+          <div class="field-label"><span>Profondeur de passe</span><span class="val" id="ap-out">2.0 mm</span></div>
+          <input type="range" id="ap" min="0.5" max="5" step="0.1" value="2.0">
+        </div>
+        <div class="field toggle-row">
+          <input type="checkbox" id="lub" checked>
+          <label for="lub" style="font-size:13px;color:var(--ink-soft);">Lubrification active</label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Pondération (panel d'experts)</h2>
+        <div class="weight-row">
+          <label>Technique (w_T)</label>
+          <input type="range" id="wT" min="0" max="100" value="40">
+          <span class="val" id="wT-out">40%</span>
+        </div>
+        <div class="weight-row">
+          <label>Santé-sécurité (w_S)</label>
+          <input type="range" id="wS" min="0" max="100" value="35">
+          <span class="val" id="wS-out">35%</span>
+        </div>
+        <div class="weight-row">
+          <label>Environnement (w_E)</label>
+          <input type="range" id="wE" min="0" max="100" value="25">
+          <span class="val" id="wE-out">25%</span>
+        </div>
+        <p class="opt-note" id="weight-sum-note">Pondérations normalisées automatiquement à 100 %.</p>
+        <button class="ghost" onclick="calibrateWeights()" id="calib-btn">Calibrer avec l'IA (simulation NSGA-II)</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <h2>Sous-indices et IPGD</h2>
+      <div class="subindex-grid">
+        <div class="subindex">
+          <p class="subindex-label">IT — technique</p>
+          <p class="subindex-value" id="it-value">50</p>
+          <div class="bar-track"><div class="bar-fill" id="it-bar" style="background:var(--teal);"></div></div>
+        </div>
+        <div class="subindex">
+          <p class="subindex-label">ISST — santé-sécurité</p>
+          <p class="subindex-value" id="isst-value">61</p>
+          <div class="bar-track"><div class="bar-fill" id="isst-bar"></div></div>
+        </div>
+        <div class="subindex">
+          <p class="subindex-label">IE — environnement</p>
+          <p class="subindex-value" id="ie-value">56</p>
+          <div class="bar-track"><div class="bar-fill" id="ie-bar"></div></div>
+        </div>
+      </div>
+
+      <div class="light-panel" id="light-panel">
+        <div class="light-stack">
+          <div class="light" id="light-red"></div>
+          <div class="light" id="light-amber"></div>
+          <div class="light" id="light-green"></div>
+        </div>
+        <div class="light-info">
+          <p class="light-score" id="ipgd-score">55</p>
+          <p class="light-label" id="ipgd-label">Vigilance requise</p>
+          <p class="light-sub" id="ipgd-sub">Compromis acceptable ; surveillez le bruit et les émissions.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <h2>Recommandations sécurité opérateur</h2>
+      <div id="safety-recos"></div>
+    </div>
+
+    <div class="card opt-card">
+      <h2>Recherche du compromis optimal (simulation)</h2>
+      <div class="opt-row">
+        <button onclick="runOptimization()" id="opt-btn">Lancer l'optimisation</button>
+        <span class="opt-note">Simule la logique d'un algorithme génétique multicritère (type NSGA-II) recherchant les meilleures plages de réglage.</span>
+      </div>
+      <div class="log" id="opt-log"><div style="color:var(--ink-soft);">En attente — cliquez sur « Lancer l'optimisation ».</div></div>
+    </div>
+
+    <div class="actions-row">
+      <button onclick="saveScenario()">Enregistrer ce scénario dans l'historique</button>
+    </div>
+  </section>
+
+  <section id="tab-historique" style="display:none;">
+    <div class="card">
+      <h2>Historique des scénarios enregistrés</h2>
+      <p class="opt-note" style="margin:-8px 0 14px;">Conservé dans ce navigateur, sur cet ordinateur — aucune donnée n'est envoyée ailleurs.</p>
+      <div class="bars-row" id="hist-bars"></div>
+      <div style="overflow-x:auto;">
+        <table class="hist">
+          <thead>
+            <tr><th>Date</th><th>Nom</th><th>IT</th><th>ISST</th><th>IE</th><th>IPGD</th><th>Statut</th><th></th></tr>
+          </thead>
+          <tbody id="hist-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-rapport" style="display:none;">
+    <div class="card">
+      <h2>Rapport</h2>
+      <p class="opt-note" style="margin:0 0 16px;">Le rapport reprend tous les scénarios enregistrés et leur IPGD, avec mention des dépassements de seuil critique.</p>
+      <div class="actions-row" style="margin-top:0;">
+        <button onclick="downloadCSV()">Télécharger le rapport (.csv, ouvrable dans Excel)</button>
+        <button class="ghost" onclick="printReport()">Imprimer / Enregistrer en PDF</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Prototype illustratif : les sous-indices et l'IPGD sont calculés à partir de formules simplifiées, à titre de démonstration. Dans l'implémentation réelle, les relations entre paramètres de coupe et nuisances seraient apprises par des modèles de machine learning entraînés sur des données expérimentales, et les pondérations seraient calibrées par couplage entre panel d'experts (AHP) et algorithme génétique multicritère (NSGA-II), conformément au cadre méthodologique de la thèse.
+  </footer>
+
+  <div id="print-report">
+    <h1 style="font-family:'Space Grotesk',sans-serif;">Rapport — Indicateur de Performance Globale Durable (IPGD)</h1>
+    <p id="print-date" style="color:#5B6266;font-size:13px;"></p>
+    <table class="hist" id="print-table" style="margin-top:16px;"></table>
+    <p style="font-size:12px;color:#5B6266;margin-top:24px;">
+      Les sous-indices et l'IPGD de ce prototype sont calculés par des formules simplifiées, à titre illustratif.
+      L'implémentation réelle s'appuierait sur des modèles de machine learning et une calibration des pondérations
+      par couplage panel d'experts (AHP) / algorithme génétique multicritère (NSGA-II).
+    </p>
+  </div>
+
+</div>
+
+<script>
+var STORAGE_KEY = "historique_ipgd_v1";
+var BRUIT_CRITIQUE = 85;
+var VIB_CRITIQUE = 4.5;
+var BRUIT_MIN = 76.4, BRUIT_MAX = 94;
+var VIB_MIN = 0.4, VIB_MAX = 5.0;
+
+function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+
+function evalParams(vc,f,ap,lub,wT,wS,wE){
+  var productivite=((vc/300)+(f/0.5)+(ap/5))/3*100;
+  var bruit=70+vc*0.08;
+  var vibrations=Math.max(0.1, ap*0.6+f*4-(lub?0.3:0));
+  var emissions=lub?(vc*0.15+10):(vc*0.35+20);
+  var energie=vc*0.2+ap*5+f*20;
+
+  productivite=clamp(productivite,0,100);
+  emissions=clamp(emissions,0,100);
+  energie=clamp(energie,0,100);
+
+  var it=productivite;
+  var nBruit=clamp((BRUIT_MAX-bruit)/(BRUIT_MAX-BRUIT_MIN)*100,0,100);
+  var nVib=clamp((VIB_MAX-vibrations)/(VIB_MAX-VIB_MIN)*100,0,100);
+  var isst=(nBruit+nVib)/2;
+  var nEmis=100-emissions;
+  var nEnergie=100-energie;
+  var ie=(nEmis+nEnergie)/2;
+
+  var sumW=wT+wS+wE;
+  if(sumW<=0){ wT=0.4; wS=0.35; wE=0.25; sumW=1; }
+  var wtN=wT/sumW, wsN=wS/sumW, weN=wE/sumW;
+
+  var ipgd=clamp(wtN*it+wsN*isst+weN*ie,0,100);
+  var veto=(bruit>BRUIT_CRITIQUE)||(vibrations>VIB_CRITIQUE);
+
+  return {
+    vc:vc,f:f,ap:ap,lub:lub,
+    productivite:productivite,bruit:bruit,vibrations:vibrations,emissions:emissions,energie:energie,
+    it:it,isst:isst,ie:ie,ipgd:ipgd,veto:veto,
+    wT:wtN,wS:wsN,wE:weN
+  };
+}
+
+function verdictFor(r){
+  if(r.veto) return "Alerte seuil critique";
+  if(r.ipgd>=70) return "Performance durable";
+  if(r.ipgd>=40) return "Vigilance requise";
+  return "Non conforme — action requise";
+}
+function suggestionFor(r){
+  if(r.veto){
+    if(r.bruit>BRUIT_CRITIQUE) return "Bruit au-dessus du seuil réglementaire (85 dB) : réduisez la vitesse de coupe.";
+    return "Vibrations au-dessus du seuil critique : réduisez l'avance ou la profondeur de passe, ou activez la lubrification.";
+  }
+  if(r.ipgd>=70) return "Réglages favorables à la fois pour la productivité et la durabilité.";
+  if(r.ipgd>=40) return "Compromis acceptable ; surveillez le bruit et les émissions.";
+  return "Réglages défavorables ; ajustez la vitesse, l'avance ou la profondeur de passe.";
+}
+function zoneOf(r){
+  if(r.veto) return "danger";
+  if(r.ipgd>=70) return "ok";
+  if(r.ipgd>=40) return "warn";
+  return "danger";
+}
+
+function setBar(id,pct,color){
+  var el=document.getElementById(id);
+  el.style.width=Math.round(pct)+"%";
+  if(color) el.style.background=color;
+}
+
+function readWeights(){
+  return {
+    wT: parseFloat(document.getElementById("wT").value),
+    wS: parseFloat(document.getElementById("wS").value),
+    wE: parseFloat(document.getElementById("wE").value),
+  };
+}
+
+function onWeightChange(){
+  var w=readWeights();
+  document.getElementById("wT-out").textContent=Math.round(w.wT)+"%";
+  document.getElementById("wS-out").textContent=Math.round(w.wS)+"%";
+  document.getElementById("wE-out").textContent=Math.round(w.wE)+"%";
+  var sum=w.wT+w.wS+w.wE;
+  var note=document.getElementById("weight-sum-note");
+  if(Math.round(sum)!==100){
+    note.textContent="Somme actuelle : "+Math.round(sum)+"% — normalisée automatiquement à 100 % dans le calcul.";
+  } else {
+    note.textContent="Pondérations normalisées automatiquement à 100 %.";
+  }
+  update();
+}
+
+function renderSafetyRecos(r){
+  var items=[];
+
+  if(r.bruit>=BRUIT_CRITIQUE){
+    items.push({tag:"danger", text:"Protection auditive obligatoire et limitation du temps d'exposition continue (seuil réglementaire de "+BRUIT_CRITIQUE+" dB dépassé, "+r.bruit.toFixed(0)+" dB mesuré)."});
+  } else if(r.bruit>=80){
+    items.push({tag:"warn", text:"Protection auditive recommandée au-delà de 80 dB en exposition prolongée ("+r.bruit.toFixed(0)+" dB mesuré, valeur d'action réglementaire)."});
+  }
+
+  if(r.vibrations>=VIB_CRITIQUE){
+    items.push({tag:"danger", text:"Gants anti-vibratiles obligatoires ; limitez le temps de cycle continu et vérifiez l'état de l'outil (usure, balourd)."});
+  } else if(r.vibrations>=2.5){
+    items.push({tag:"warn", text:"Vigilance vibratoire : limitez la durée d'exposition continue et alternez les opérateurs si possible."});
+  }
+
+  if(r.emissions>=70){
+    items.push({tag:"danger", text: r.lub ? "Vérifiez l'aspiration locale : émissions élevées malgré la lubrification active." : "Activez la lubrification et vérifiez l'aspiration locale : émissions élevées."});
+  } else if(r.emissions>=50){
+    items.push({tag:"warn", text:"Surveillez la qualité de l'air ; aspiration locale recommandée."});
+  }
+
+  if(items.length===0){
+    items.push({tag:"ok", text:"Aucune action immédiate requise — réglages conformes aux bonnes pratiques SST."});
+  }
+
+  var container=document.getElementById("safety-recos");
+  container.innerHTML="";
+  items.forEach(function(it){
+    var label = it.tag==="danger" ? "Obligatoire" : it.tag==="warn" ? "Recommandé" : "Conforme";
+    var div=document.createElement("div");
+    div.className="reco";
+    var tagSpan=document.createElement("span");
+    tagSpan.className="reco-tag t-"+it.tag;
+    tagSpan.textContent=label;
+    var textSpan=document.createElement("span");
+    textSpan.className="reco-text";
+    textSpan.textContent=it.text;
+    div.appendChild(tagSpan);
+    div.appendChild(textSpan);
+    container.appendChild(div);
+  });
+}
+
+function update(){
+  var vc=parseFloat(document.getElementById("vc").value);
+  var f=parseFloat(document.getElementById("f").value);
+  var ap=parseFloat(document.getElementById("ap").value);
+  var lub=document.getElementById("lub").checked;
+  var w=readWeights();
+  var r=evalParams(vc,f,ap,lub,w.wT,w.wS,w.wE);
+
+  document.getElementById("vc-out").textContent=Math.round(r.vc)+" m/min";
+  document.getElementById("f-out").textContent=r.f.toFixed(2)+" mm/tr";
+  document.getElementById("ap-out").textContent=r.ap.toFixed(1)+" mm";
+
+  document.getElementById("it-value").textContent=Math.round(r.it);
+  setBar("it-bar",r.it,"var(--teal)");
+  document.getElementById("isst-value").textContent=Math.round(r.isst);
+  setBar("isst-bar",r.isst, r.isst>=70?"var(--ok)":r.isst>=40?"var(--warn)":"var(--danger)");
+  document.getElementById("ie-value").textContent=Math.round(r.ie);
+  setBar("ie-bar",r.ie, r.ie>=70?"var(--ok)":r.ie>=40?"var(--warn)":"var(--danger)");
+
+  document.getElementById("ipgd-score").textContent=Math.round(r.ipgd);
+  document.getElementById("ipgd-label").textContent=verdictFor(r);
+  document.getElementById("ipgd-sub").textContent=suggestionFor(r);
+
+  var zone=zoneOf(r);
+  document.getElementById("light-red").className="light"+(zone==="danger"?" on-red":"");
+  document.getElementById("light-amber").className="light"+(zone==="warn"?" on-amber":"");
+  document.getElementById("light-green").className="light"+(zone==="ok"?" on-green":"");
+
+  renderSafetyRecos(r);
+
+  window._lastEval = r;
+}
+
+["vc","f","ap"].forEach(function(id){
+  document.getElementById(id).addEventListener("input", update);
+});
+document.getElementById("lub").addEventListener("change", update);
+["wT","wS","wE"].forEach(function(id){
+  document.getElementById(id).addEventListener("input", onWeightChange);
+});
+
+function rand(min,max){return Math.random()*(max-min)+min;}
+function scoreOf(r){return r.ipgd-(r.veto?40:0);}
+var optimizing=false;
+
+function runOptimization(){
+  if(optimizing) return;
+  optimizing=true;
+  var btn=document.getElementById("opt-btn");
+  btn.disabled=true;
+  btn.textContent="Optimisation en cours…";
+  var log=document.getElementById("opt-log");
+  log.innerHTML="";
+  var w=readWeights();
+  var best=null, gen=0, maxGen=5;
+
+  function step(){
+    gen++;
+    var candidates=[];
+    for(var i=0;i<6;i++){
+      var vc=rand(80,300), f=rand(0.1,0.5), ap=rand(0.5,5), lub=Math.random()>0.3;
+      candidates.push(evalParams(vc,f,ap,lub,w.wT,w.wS,w.wE));
+    }
+    candidates.sort(function(a,b){return scoreOf(b)-scoreOf(a);});
+    var genBest=candidates[0];
+    if(!best || scoreOf(genBest)>scoreOf(best)) best=genBest;
+
+    var line=document.createElement("div");
+    line.textContent="gén. "+gen+" — vc="+Math.round(genBest.vc)+" f="+genBest.f.toFixed(2)+
+      " ap="+genBest.ap.toFixed(1)+" lub="+(genBest.lub?"oui":"non")+"  →  IPGD "+Math.round(genBest.ipgd)+
+      (genBest.veto?" (seuil critique)":"");
+    log.appendChild(line);
+    log.scrollTop=log.scrollHeight;
+
+    if(gen<maxGen){
+      setTimeout(step,500);
+    } else {
+      document.getElementById("vc").value=Math.round(best.vc);
+      document.getElementById("f").value=best.f.toFixed(2);
+      document.getElementById("ap").value=best.ap.toFixed(1);
+      document.getElementById("lub").checked=best.lub;
+      update();
+      var final=document.createElement("div");
+      final.style.marginTop="8px";
+      final.style.fontWeight="500";
+      final.textContent="→ Meilleure plage retenue : vc="+Math.round(best.vc)+" m/min, f="+
+        best.f.toFixed(2)+" mm/tr, ap="+best.ap.toFixed(1)+" mm, lubrification "+
+        (best.lub?"active":"inactive")+" — IPGD "+Math.round(best.ipgd);
+      log.appendChild(final);
+      log.scrollTop=log.scrollHeight;
+      btn.disabled=false;
+      btn.textContent="Relancer l'optimisation";
+      optimizing=false;
+    }
+  }
+  step();
+}
+
+function calibrateWeights(){
+  var btn=document.getElementById("calib-btn");
+  btn.disabled=true;
+  btn.textContent="Calibration en cours…";
+  setTimeout(function(){
+    document.getElementById("wT").value=30;
+    document.getElementById("wS").value=45;
+    document.getElementById("wE").value=25;
+    onWeightChange();
+    btn.disabled=false;
+    btn.textContent="Recalibrer avec l'IA";
+  },700);
+}
+
+function loadHistorique(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+  catch(e){ return []; }
+}
+function persistHistorique(rows){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+}
+
+function saveScenario(){
+  var vc=parseFloat(document.getElementById("vc").value);
+  var f=parseFloat(document.getElementById("f").value);
+  var ap=parseFloat(document.getElementById("ap").value);
+  var lub=document.getElementById("lub").checked;
+  var w=readWeights();
+  var r=evalParams(vc,f,ap,lub,w.wT,w.wS,w.wE);
+  var nom=window.prompt("Nom du scénario (optionnel) :","") || "";
+  var rows=loadHistorique();
+  r.id=Date.now();
+  r.date=new Date().toLocaleString("fr-FR");
+  r.nom=nom;
+  rows.push(r);
+  persistHistorique(rows);
+  alert("Scénario enregistré dans l'historique.");
+}
+
+function deleteScenario(id){
+  var rows=loadHistorique().filter(function(r){return r.id!==id;});
+  persistHistorique(rows);
+  renderHistorique();
+}
+
+function loadScenarioToDashboard(id){
+  var rows=loadHistorique();
+  var row=rows.filter(function(r){return r.id===id;})[0];
+  if(!row) return;
+  document.getElementById("vc").value=row.vc;
+  document.getElementById("f").value=row.f;
+  document.getElementById("ap").value=row.ap;
+  document.getElementById("lub").checked=row.lub;
+  if(row.wT!=null){
+    document.getElementById("wT").value=Math.round(row.wT*100);
+    document.getElementById("wS").value=Math.round(row.wS*100);
+    document.getElementById("wE").value=Math.round(row.wE*100);
+    onWeightChange();
+  }
+  update();
+  showTab("dashboard");
+}
+
+function tagClass(zone){
+  if(zone==="ok") return "tag-ok";
+  if(zone==="warn") return "tag-warn";
+  return "tag-danger";
+}
+
+function renderHistorique(){
+  var rows=loadHistorique();
+  var tbody=document.getElementById("hist-tbody");
+  var bars=document.getElementById("hist-bars");
+  tbody.innerHTML="";
+  bars.innerHTML="";
+
+  if(rows.length===0){
+    var tr=document.createElement("tr");
+    tr.innerHTML='<td colspan="8" style="color:var(--ink-soft);padding:20px;">Aucun scénario enregistré</td>';
+    tbody.appendChild(tr);
+    return;
+  }
+
+  for(var i=rows.length-1;i>=0;i--){
+    var row=rows[i];
+    var zone=zoneOf(row);
+    var statut=verdictFor(row);
+    var tr=document.createElement("tr");
+    tr.innerHTML =
+      "<td>"+row.date+"</td>"+
+      "<td>"+(row.nom||"")+"</td>"+
+      "<td>"+Math.round(row.it)+"</td>"+
+      "<td>"+Math.round(row.isst)+"</td>"+
+      "<td>"+Math.round(row.ie)+"</td>"+
+      "<td>"+Math.round(row.ipgd)+"</td>"+
+      '<td><span class="tag '+tagClass(zone)+'">'+statut+"</span></td>"+
+      "<td></td>";
+    var actionsTd=tr.lastElementChild;
+    var loadBtn=document.createElement("button");
+    loadBtn.className="ghost";
+    loadBtn.textContent="Charger";
+    loadBtn.onclick=(function(id){ return function(){ loadScenarioToDashboard(id); }; })(row.id);
+    var delBtn=document.createElement("button");
+    delBtn.className="ghost";
+    delBtn.style.marginLeft="4px";
+    delBtn.textContent="Suppr.";
+    delBtn.onclick=(function(id){ return function(){ deleteScenario(id); }; })(row.id);
+    actionsTd.appendChild(loadBtn);
+    actionsTd.appendChild(delBtn);
+    tbody.appendChild(tr);
+  }
+
+  rows.forEach(function(row){
+    var zone=zoneOf(row);
+    var color = zone==="ok" ? "var(--ok)" : zone==="warn" ? "var(--warn)" : "var(--danger)";
+    var bar=document.createElement("div");
+    bar.className="bar";
+    bar.style.height=Math.max(3,row.ipgd)+"%";
+    bar.style.background=color;
+    bar.title=row.date+" — IPGD "+Math.round(row.ipgd);
+    bar.onclick=(function(id){ return function(){ loadScenarioToDashboard(id); }; })(row.id);
+    bars.appendChild(bar);
+  });
+}
+
+function showTab(name){
+  ["dashboard","historique","rapport"].forEach(function(t){
+    document.getElementById("tab-"+t).style.display = (t===name) ? "block" : "none";
+    document.getElementById("navbtn-"+t).classList.toggle("active", t===name);
+  });
+  if(name==="historique") renderHistorique();
+}
+
+function downloadCSV(){
+  var rows=loadHistorique();
+  if(rows.length===0){ alert("Aucun scénario enregistré pour le moment."); return; }
+  var header=["Date","Nom","Vitesse de coupe (m/min)","Avance (mm/tr)","Profondeur de passe (mm)",
+              "Lubrification","IT","ISST","IE","IPGD","Statut"];
+  var lines=[header.join(";")];
+  rows.forEach(function(r){
+    lines.push([
+      r.date, r.nom||"", r.vc.toFixed(0), r.f.toFixed(2), r.ap.toFixed(1),
+      r.lub?"Oui":"Non", r.it.toFixed(1), r.isst.toFixed(1), r.ie.toFixed(1), r.ipgd.toFixed(1),
+      verdictFor(r)
+    ].join(";"));
+  });
+  var blob=new Blob(["\uFEFF"+lines.join("\n")], {type:"text/csv;charset=utf-8;"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;
+  a.download="rapport_ipgd_usinage.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function printReport(){
+  var rows=loadHistorique();
+  if(rows.length===0){ alert("Aucun scénario enregistré pour le moment."); return; }
+  document.getElementById("print-date").textContent="Généré le "+new Date().toLocaleString("fr-FR");
+  var table=document.getElementById("print-table");
+  var html="<tr><th>Date</th><th>Nom</th><th>IT</th><th>ISST</th><th>IE</th><th>IPGD</th><th>Statut</th></tr>";
+  rows.forEach(function(r){
+    html+="<tr><td>"+r.date+"</td><td>"+(r.nom||"")+"</td><td>"+Math.round(r.it)+"</td>"+
+      "<td>"+Math.round(r.isst)+"</td><td>"+Math.round(r.ie)+"</td><td>"+Math.round(r.ipgd)+"</td>"+
+      "<td>"+verdictFor(r)+"</td></tr>";
+  });
+  table.innerHTML=html;
+  window.print();
+}
+
+update();
+renderHistorique();
+
+if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
+  navigator.serviceWorker.register("service-worker.js").catch(function(){ /* hébergement requis pour le mode hors-ligne */ });
+}
+</script>
+</body>
+</html>
