@@ -1,4 +1,4 @@
-const CACHE_NAME = "ipgd-cache-v1";
+const CACHE_NAME = "ipgd-cache-v3";
 const ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", function (event) {

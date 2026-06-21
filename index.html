@@ -142,10 +142,10 @@
         <h2>Paramètres du procédé</h2>
         <div class="field">
           <div class="field-label"><span>Vitesse de coupe</span><span class="val" id="vc-out">180 m/min</span></div>
-          <input type="range" id="vc" min="80" max="300" step="10" value="180">
+          <input type="range" id="vc" min="15" max="300" step="10" value="180">
         </div>
         <div class="field">
-          <div class="field-label"><span>Avance</span><span class="val" id="f-out">0.25 mm/tr</span></div>
+          <div class="field-label"><span id="f-label">Avance</span><span class="val" id="f-out">0.25 mm/tr</span></div>
           <input type="range" id="f" min="0.1" max="0.5" step="0.01" value="0.25">
         </div>
         <div class="field">
@@ -181,6 +181,41 @@
     </div>
 
     <div class="card" style="margin-top:20px;">
+      <h2>Réglage machine — fréquence de rotation</h2>
+      <div class="field toggle-row" style="gap:18px;margin-bottom:16px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-soft);">
+          <input type="radio" name="operation" id="op-tournage" value="tournage" checked> Tournage
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-soft);">
+          <input type="radio" name="operation" id="op-fraisage" value="fraisage"> Fraisage
+        </label>
+      </div>
+      <div class="field">
+        <div class="field-label"><span id="diam-label">Diamètre de la pièce</span><span class="val" id="diam-out">50 mm</span></div>
+        <input type="range" id="diametre" min="5" max="300" step="1" value="50">
+      </div>
+      <div class="field" id="dents-field" style="display:none;">
+        <div class="field-label"><span>Nombre de dents (Z)</span><span class="val" id="dents-out">4</span></div>
+        <input type="range" id="dents" min="1" max="12" step="1" value="4">
+      </div>
+      <div class="field" id="fz-field" style="display:none;">
+        <div class="field-label"><span>Avance par dent (fz)</span><span class="val" id="fz-out">0.10 mm/dent</span></div>
+        <input type="range" id="fz" min="0.02" max="0.3" step="0.01" value="0.1">
+      </div>
+      <div class="subindex-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="subindex">
+          <p class="subindex-label">Fréquence de rotation N</p>
+          <p class="subindex-value" id="freq-value" style="font-size:22px;">1146 tr/min</p>
+        </div>
+        <div class="subindex" id="vf-card" style="display:none;">
+          <p class="subindex-label">Vitesse d'avance table Vf</p>
+          <p class="subindex-value" id="vf-value" style="font-size:22px;">— mm/min</p>
+        </div>
+      </div>
+      <p class="opt-note" style="margin-top:12px;margin-bottom:0;">N = (1000 × Vc) / (π × D) — D est le diamètre de la pièce en tournage, le diamètre de l'outil en fraisage.</p>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
       <h2>Sous-indices et IPGD</h2>
       <div class="subindex-grid">
         <div class="subindex">
@@ -190,7 +225,7 @@
         </div>
         <div class="subindex">
           <p class="subindex-label">ISST — santé-sécurité</p>
-          <p class="subindex-value" id="isst-value">61</p>
+          <p class="subindex-value" id="isst-value">55</p>
           <div class="bar-track"><div class="bar-fill" id="isst-bar"></div></div>
         </div>
         <div class="subindex">
@@ -207,7 +242,7 @@
           <div class="light" id="light-green"></div>
         </div>
         <div class="light-info">
-          <p class="light-score" id="ipgd-score">55</p>
+          <p class="light-score" id="ipgd-score">53</p>
           <p class="light-label" id="ipgd-label">Vigilance requise</p>
           <p class="light-sub" id="ipgd-sub">Compromis acceptable ; surveillez le bruit et les émissions.</p>
         </div>
@@ -281,7 +316,7 @@
 var STORAGE_KEY = "historique_ipgd_v1";
 var BRUIT_CRITIQUE = 85;
 var VIB_CRITIQUE = 4.5;
-var BRUIT_MIN = 76.4, BRUIT_MAX = 94;
+var BRUIT_MIN = 71.2, BRUIT_MAX = 94;
 var VIB_MIN = 0.4, VIB_MAX = 5.0;
 
 function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
@@ -444,8 +479,54 @@ function update(){
 
   renderSafetyRecos(r);
 
+  updateMachineReadout();
+
   window._lastEval = r;
 }
+
+function updateMachineReadout(){
+  var vc = parseFloat(document.getElementById("vc").value);
+  var diametre = parseFloat(document.getElementById("diametre").value);
+  var opType = document.querySelector('input[name="operation"]:checked').value;
+
+  var N = (1000 * vc) / (Math.PI * diametre);
+  document.getElementById("freq-value").textContent = Math.round(N) + " tr/min";
+
+  var vfCard = document.getElementById("vf-card");
+  if (opType === "fraisage") {
+    var Z = parseFloat(document.getElementById("dents").value);
+    var fz = parseFloat(document.getElementById("fz").value);
+    var Vf = fz * Z * N;
+    document.getElementById("vf-value").textContent = Math.round(Vf) + " mm/min";
+    vfCard.style.display = "";
+  } else {
+    vfCard.style.display = "none";
+  }
+}
+
+function onOperationChange(){
+  var opType = document.querySelector('input[name="operation"]:checked').value;
+  var milling = opType === "fraisage";
+  document.getElementById("diam-label").textContent = milling ? "Diamètre de l'outil" : "Diamètre de la pièce";
+  document.getElementById("dents-field").style.display = milling ? "" : "none";
+  document.getElementById("fz-field").style.display = milling ? "" : "none";
+  updateMachineReadout();
+}
+
+document.getElementById("op-tournage").addEventListener("change", onOperationChange);
+document.getElementById("op-fraisage").addEventListener("change", onOperationChange);
+document.getElementById("diametre").addEventListener("input", function(){
+  document.getElementById("diam-out").textContent = this.value + " mm";
+  updateMachineReadout();
+});
+document.getElementById("dents").addEventListener("input", function(){
+  document.getElementById("dents-out").textContent = this.value;
+  updateMachineReadout();
+});
+document.getElementById("fz").addEventListener("input", function(){
+  document.getElementById("fz-out").textContent = parseFloat(this.value).toFixed(2) + " mm/dent";
+  updateMachineReadout();
+});
 
 ["vc","f","ap"].forEach(function(id){
   document.getElementById(id).addEventListener("input", update);
@@ -474,7 +555,7 @@ function runOptimization(){
     gen++;
     var candidates=[];
     for(var i=0;i<6;i++){
-      var vc=rand(80,300), f=rand(0.1,0.5), ap=rand(0.5,5), lub=Math.random()>0.3;
+      var vc=rand(15,300), f=rand(0.1,0.5), ap=rand(0.5,5), lub=Math.random()>0.3;
       candidates.push(evalParams(vc,f,ap,lub,w.wT,w.wS,w.wE));
     }
     candidates.sort(function(a,b){return scoreOf(b)-scoreOf(a);});
