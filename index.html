@@ -107,6 +107,9 @@
   .bars-row{display:flex;align-items:flex-end;gap:6px;height:90px;margin-bottom:16px;overflow-x:auto;
     border-bottom:1px solid var(--line);padding-bottom:2px;}
   .bars-row .bar{width:18px;border-radius:3px 3px 0 0;cursor:pointer;flex-shrink:0;min-height:3px;}
+  .legend-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .legend-dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
+  .legend-text{font-size:13px;color:var(--ink-soft);margin-right:14px;}
   .reco{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line);}
   .reco:last-child{border-bottom:none;}
   .reco-tag{flex-shrink:0;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;
@@ -213,6 +216,49 @@
         </div>
       </div>
       <p class="opt-note" style="margin-top:12px;margin-bottom:0;">N = (1000 × Vc) / (π × D) — D est le diamètre de la pièce en tournage, le diamètre de l'outil en fraisage.</p>
+    </div>
+
+    <div class="card legend-card" style="margin-top:20px;">
+      <div class="legend-row">
+        <span class="legend-dot" style="background:var(--ok);"></span><span class="legend-text">Favorable</span>
+        <span class="legend-dot" style="background:var(--warn);"></span><span class="legend-text">Vigilance</span>
+        <span class="legend-dot" style="background:var(--danger);"></span><span class="legend-text">Critique</span>
+      </div>
+      <p class="opt-note" style="margin:8px 0 0;">
+        Pour les <strong>indicateurs prédits</strong> ci-dessous (bruit, vibrations, émissions, énergie), le rouge signale une valeur <strong>élevée</strong> donc défavorable. Pour les <strong>scores agrégés</strong> (IT, ISST, IE, IPGD) plus bas, le rouge signale au contraire un score <strong>faible</strong> — la lecture s'inverse, puisque l'un mesure une nuisance et l'autre une performance.
+      </p>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <h2>Indicateurs prédits par le modèle</h2>
+      <div class="subindex-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="subindex">
+          <p class="subindex-label">Productivité</p>
+          <p class="subindex-value" id="pred-prod-value">50%</p>
+          <div class="bar-track"><div class="bar-fill" id="pred-prod-bar" style="background:var(--teal);"></div></div>
+        </div>
+        <div class="subindex">
+          <p class="subindex-label">Bruit</p>
+          <p class="subindex-value" id="pred-bruit-value">84 dB</p>
+          <div class="bar-track"><div class="bar-fill" id="pred-bruit-bar"></div></div>
+        </div>
+        <div class="subindex">
+          <p class="subindex-label">Vibrations</p>
+          <p class="subindex-value" id="pred-vib-value">1.9 mm/s</p>
+          <div class="bar-track"><div class="bar-fill" id="pred-vib-bar"></div></div>
+        </div>
+        <div class="subindex">
+          <p class="subindex-label">Émissions</p>
+          <p class="subindex-value" id="pred-emis-value">37</p>
+          <div class="bar-track"><div class="bar-fill" id="pred-emis-bar"></div></div>
+        </div>
+        <div class="subindex" style="grid-column:1 / -1;">
+          <p class="subindex-label">Empreinte énergétique</p>
+          <p class="subindex-value" id="pred-energie-value">51</p>
+          <div class="bar-track"><div class="bar-fill" id="pred-energie-bar"></div></div>
+        </div>
+      </div>
+      <p class="opt-note" style="margin:10px 0 0;">Valeurs illustratives ; dans le cadre réel, prédites par les modèles d'apprentissage automatique entraînés en phase 2.</p>
     </div>
 
     <div class="card" style="margin-top:20px;">
@@ -377,6 +423,12 @@ function zoneOf(r){
   return "danger";
 }
 
+function levelColor(pct){
+  if(pct<40) return "var(--ok)";
+  if(pct<70) return "var(--warn)";
+  return "var(--danger)";
+}
+
 function setBar(id,pct,color){
   var el=document.getElementById(id);
   el.style.width=Math.round(pct)+"%";
@@ -476,6 +528,19 @@ function update(){
   document.getElementById("light-red").className="light"+(zone==="danger"?" on-red":"");
   document.getElementById("light-amber").className="light"+(zone==="warn"?" on-amber":"");
   document.getElementById("light-green").className="light"+(zone==="ok"?" on-green":"");
+
+  document.getElementById("pred-prod-value").textContent=Math.round(r.productivite)+"%";
+  setBar("pred-prod-bar",r.productivite,"var(--teal)");
+  document.getElementById("pred-bruit-value").textContent=Math.round(r.bruit)+" dB";
+  var predBruitPct=clamp((r.bruit-BRUIT_MIN)/(BRUIT_MAX-BRUIT_MIN)*100,0,100);
+  setBar("pred-bruit-bar",predBruitPct,levelColor(predBruitPct));
+  document.getElementById("pred-vib-value").textContent=r.vibrations.toFixed(1)+" mm/s";
+  var predVibPct=clamp((r.vibrations-VIB_MIN)/(VIB_MAX-VIB_MIN)*100,0,100);
+  setBar("pred-vib-bar",predVibPct,levelColor(predVibPct));
+  document.getElementById("pred-emis-value").textContent=Math.round(r.emissions);
+  setBar("pred-emis-bar",r.emissions,levelColor(r.emissions));
+  document.getElementById("pred-energie-value").textContent=Math.round(r.energie);
+  setBar("pred-energie-bar",r.energie,levelColor(r.energie));
 
   renderSafetyRecos(r);
 
